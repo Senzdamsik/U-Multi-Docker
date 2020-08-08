@@ -1,0 +1,53 @@
+version: "3"
+services:
+  postgres:
+    image: 'postgres:latest'
+    environment:
+      - POSTGRES_PASSWORD=postgres_password
+  redis:
+    image: 'redis:latest'
+  api:                     # api ini nama lain dari Express server yg kita buat
+    depends_on:
+      - postgres 
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./server
+    volumes:
+      - /app/node_modules # Ini maksudnya jangan hubungkan node_modules di Container dengan di local kita (karena di local ga ada node_modules). 
+      - ./server:/app
+    environment:         
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379                 # --> Bagian ini ada di dokumentasi Image dari Dockerhub
+      - PGUSER=postgres                 # --> Bagian ini ada di dokumentasi Image dari Dockerhub
+      - PGHOST=postgres
+      - PGDATABASE=postgres             # --> Bagian ini ada di dokumentasi Image dari Dockerhub
+      - PGPASSWORD=postgres_password    # --> Bagian ini ada di dokumentasi Image dari Dockerhub
+      - PGPORT=5432                     # --> Bagian ini ada di dokumentasi Image dari Dockerhub
+  client:
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./client
+    volumes:
+      - /app/node_modules
+      - ./client:/app
+    stdin_open: true
+  nginx:
+    restart: always
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./nginx
+    ports:
+      - '3050:80'
+    depends_on:
+      - api
+      - client
+  worker:
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./worker
+    volumes:
+      - /app/node_modules
+      - ./worker:/app
+    environment:
+    - REDIS_HOST=redis
+    - REDIS_PORT=6379
