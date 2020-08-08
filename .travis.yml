@@ -1,0 +1,44 @@
+sudo: required
+services:
+  - docker
+
+before_install:
+  # Di sini kita akan melakukan testing untuk Client. Kita bisa juga melakukan testing utk Worker, Server dll kalo mau
+  - docker build -t senzdamsik/react-test -f ./client/Dockerfile.dev ./client
+
+script:
+#   - docker run senzdamsik/react-test npm test -- --coverage
+#   - docker run -e CI=true senzdamsik/react-test npm run test
+  - docker run -e CI=true senzdamsik/react-test npm test
+
+
+
+# Bagian atas ini adalah testing. Bagian bawah ini adalah untuk Production
+
+
+
+after_success:
+  - docker build -t senzdamsik/multi-client ./client
+  - docker build -t senzdamsik/multi-nginx ./nginx
+  - docker build -t senzdamsik/multi-server ./server
+  - docker build -t senzdamsik/multi-worker ./worker
+  # Log in to the docker CLI
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin # id= senzdamsik, pass: mu...
+  # Take those images and push them to docker hub
+  - docker push senzdamsik/multi-client
+  - docker push senzdamsik/multi-nginx
+  - docker push senzdamsik/multi-server
+  - docker push senzdamsik/multi-worker
+
+# deploy:
+#   provider: elasticbeanstalk
+#   region: us-west-1
+#   app: multi-docker
+#   env: MultiDocker-env
+#   bucket_name: elasticbeanstalk-us-west-1-306476627547
+#   bucket_path: docker-multi
+#   on:
+#     branch: master
+#   access_key_id: $AWS_ACCESS_KEY
+#   secret_access_key:
+#     secure: $AWS_SECRET_KEY
